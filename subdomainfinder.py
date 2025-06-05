@@ -57,7 +57,7 @@ def run_subfinder(domain):
 def run_amass(domain):
     if shutil.which("amass") is None:
         return set()
-    print("[*] Ejecutando amass (modo pasivo, máximo 10 minutos)...")
+    print("[*] Ejecutando amass (modo pasivo, máximo 5 minutos)...")
 
     cmd = ["amass", "enum", "-passive", "-d", domain]
     output_lines = []
@@ -69,7 +69,7 @@ def run_amass(domain):
             while True:
                 if proc.poll() is not None:
                     break
-                if time.time() - start_time > 600:  # 10 minutos
+                if time.time() - start_time > 300:
                     print("[!] Tiempo máximo alcanzado. Finalizando amass...")
                     proc.terminate()
                     break
@@ -79,6 +79,7 @@ def run_amass(domain):
                     output_lines.append(line)
                     logfile.write(line + "\n")
 
+            # Captura lo restante si amass finalizó por su cuenta
             if proc.stdout:
                 for line in proc.stdout.read().splitlines():
                     line = line.strip()
@@ -91,34 +92,21 @@ def run_amass(domain):
         print(f"[!] Error ejecutando amass: {e}")
         return set()
 
-def check_with_httpx(subdomains):
-    if shutil.which("httpx") is None:
-        print("[!] httpx no está instalado. Saltando esta verificación.")
-        return set()
-
-    print("\n[*] Verificando con httpx (detección rápida y paralela)...")
-    try:
-        input_file = "temp_httpx_input.txt"
-        output_file = "httpx_live.txt"
-
-        with open(input_file, "w") as f:
-            for sub in subdomains:
-                f.write(sub + "\n")
-
-        cmd = ["httpx", "-silent", "-status-code", "-ip", "-title", "-no-color", "-timeout", "5", "-o", output_file]
-        subprocess.run(cmd, stdin=open(input_file), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        live = set()
-        with open(output_file, "r") as f:
-            for line in f:
-                parts = line.strip().split(" ")
-                if parts:
-                    live.add(parts[0])
-        print(f"[+] Subdominios activos detectados con httpx: {len(live)}")
-        return live
-    except Exception as e:
-        print(f"[!] Error en httpx: {e}")
-        return set()
+def check_http_services(subdomains):
+    print("\n[*] Verificando si los subdominios responden por HTTP/HTTPS...")
+    live = set()
+    for sub in sorted(subdomains):
+        for proto in ["http", "https"]:
+            url = f"{proto}://{sub}"
+            try:
+                r = requests.get(url, timeout=5)
+                if r.status_code < 500:
+                    print(f"  [+] {url} -> {r.status_code}")
+                    live.add(url)
+                    break
+            except:
+                continue
+    return live
 
 def save_to_file(domain, subdomains, live_subs):
     filename = f"subdomains_{domain.replace('.', '_')}.txt"
@@ -149,7 +137,7 @@ def main():
 
     print(f"\n[+] Total de subdominios encontrados: {len(all_subdomains)}")
 
-    live_subs = check_with_httpx(all_subdomains)
+    live_subs = check_http_services(all_subdomains)
 
     save_to_file(domain, all_subdomains, live_subs)
 
