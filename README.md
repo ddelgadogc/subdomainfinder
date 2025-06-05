@@ -73,5 +73,5 @@ httpx_live.txt
     La recopilación pasiva de subdominios es legal en muchos contextos, pero tú eres responsable de tu uso.
 
 🙌 Autor / Mantenimiento
-  Script personalizado con integración OSINT por David Delgado Déniz.
-  Puedes modificarlo para agregar otras fuentes o automatizar escaneo de puertos, tecnologías, etc.
+   Script personalizado con integración OSINT por David Delgado Déniz.
+   Puedes modificarlo para agregar otras fuentes o automatizar escaneo de puertos, tecnologías, etc.
